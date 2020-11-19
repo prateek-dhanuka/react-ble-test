@@ -1,0 +1,12 @@
+{
+  "name": "react-ble-test",
+  "displayName": "react-ble-test",
+  "expo": {
+    "name": "react-ble-test",
+    "slug": "react-ble-test",
+    "version": "1.0.0",
+    "assetBundlePatterns": [
+      "**/*"
+    ]
+  }
+}
