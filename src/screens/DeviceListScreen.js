@@ -1,13 +1,13 @@
 import { Button, Divider, List } from "react-native-paper";
-import { PermissionsAndroid, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { PermissionsAndroid, Platform, ScrollView, Text, View } from "react-native";
 
-import { BleManager } from "react-native-ble-plx";
+import BleManagerContext from '../core/BleManagerContext'
 import React from "react";
 import theme from "../core/theme";
 
-const DeviceListScreen = ({ route, navigation }) => {
+const DeviceListScreen = ({ navigation }) => {
   // BLE Manager for performing tasks
-  const [bleManager, setManager] = React.useState(new BleManager());
+  bleManager = React.useContext(BleManagerContext);
 
   // Whether currently scanning or not
   const [scanning, setScanning] = React.useState(false);
@@ -19,12 +19,25 @@ const DeviceListScreen = ({ route, navigation }) => {
   // Currently selected device
   const [selectedDevice, SelectDevice] = React.useState({ id: null });
 
+  // Functions to start and stop scans
+  const startScan = (callback) => {
+    if (!scanning) {
+      setScanning(true);
+      bleManager.startDeviceScan(null, { allowDuplicates: false }, callback);
+    }
+  };
+
+  const stopScan = () => {
+    if (scanning) {
+      setScanning(false);
+      bleManager.stopDeviceScan();
+    }
+  };
+
   // Callback to start and stop scanning
   const scan = () => {
     if (!scanning) {
-      setScanning(true);
-
-      bleManager.startDeviceScan(null, { allowDuplicates: false }, (error, newDevice) => {
+      startScan((error, newDevice) => {
         const deviceIndex = devices.current.findIndex((device) => device.id === newDevice.id);
 
         // If a device is rediscovered, update its rssi
@@ -37,35 +50,28 @@ const DeviceListScreen = ({ route, navigation }) => {
         }
       });
     } else {
-      setScanning(false);
-
-      bleManager.stopDeviceScan();
+      stopScan();
     }
   };
 
   // callback to connect to the selected Device
   const connect = React.useCallback(() => {
-    // console.log(`Trying to connect to ${selectedDevice.name}(${selectedDevice.id}). All details: `);
-    // console.log(selectedDevice);
+    stopScan();
+
     selectedDevice
       .connect({ timeout: 1000 })
       .then((device) => {
-        // console.log("Device = ", device);
         return device.discoverAllServicesAndCharacteristics();
       })
       .then((device) => {
-        // console.log("Device = ", device);
-        return device.services();
-      })
-      .then((services) => {
-        console.log(services);
+        navigation.navigate("services", device.id);
       })
       .catch((error) => {
         console.error(error);
       });
   }, [selectedDevice]);
 
-  // Set the scan button
+  // Set the scan and connect buttons
   React.useEffect(() => {
     navigation.setOptions({
       headerRight: () => (
@@ -131,14 +137,5 @@ const DeviceListScreen = ({ route, navigation }) => {
     </ScrollView>
   );
 };
-
-const styles = StyleSheet.create({
-  bottom: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-});
 
 export default DeviceListScreen;
