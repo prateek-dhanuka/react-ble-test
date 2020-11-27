@@ -1,9 +1,8 @@
 import { Button, Divider, List } from "react-native-paper";
-import { PermissionsAndroid, Platform, ScrollView, Text, View } from "react-native";
+import { PermissionsAndroid, Platform, ScrollView } from "react-native";
 
-import BleManagerContext from '../core/BleManagerContext'
+import BleManagerContext from "../core/BleManagerContext";
 import React from "react";
-import theme from "../core/theme";
 
 const DeviceListScreen = ({ navigation }) => {
   // BLE Manager for performing tasks
@@ -15,9 +14,6 @@ const DeviceListScreen = ({ navigation }) => {
   // A list of all discovered devices. Device count is only to force a re-render.
   const devices = React.useRef([]);
   const [deviceCount, setDeviceCount] = React.useState(0);
-
-  // Currently selected device
-  const [selectedDevice, SelectDevice] = React.useState({ id: null });
 
   // Functions to start and stop scans
   const startScan = (callback) => {
@@ -38,6 +34,11 @@ const DeviceListScreen = ({ navigation }) => {
   const scan = () => {
     if (!scanning) {
       startScan((error, newDevice) => {
+        if (error) {
+          console.error(error);
+          return;
+        }
+
         const deviceIndex = devices.current.findIndex((device) => device.id === newDevice.id);
 
         // If a device is rediscovered, update its rssi
@@ -54,11 +55,11 @@ const DeviceListScreen = ({ navigation }) => {
     }
   };
 
-  // callback to connect to the selected Device
-  const connect = React.useCallback(() => {
+  // callback to connect to the Device
+  const connect = (device) => {
     stopScan();
 
-    selectedDevice
+    device
       .connect({ timeout: 1000 })
       .then((device) => {
         return device.discoverAllServicesAndCharacteristics();
@@ -69,17 +70,12 @@ const DeviceListScreen = ({ navigation }) => {
       .catch((error) => {
         console.error(error);
       });
-  }, [selectedDevice]);
+  };
 
   // Set the scan and connect buttons
   React.useEffect(() => {
     navigation.setOptions({
-      headerRight: () => (
-        <View style={{ flexDirection: "row" }}>
-          <Button onPress={scan}>{scanning ? "Stop Scan" : "Scan"}</Button>
-          <Button onPress={connect}>Connect</Button>
-        </View>
-      ),
+      headerRight: () => <Button onPress={scan}>{scanning ? "Stop Scan" : "Scan"}</Button>,
     });
   }, [scanning, connect]);
 
@@ -97,43 +93,19 @@ const DeviceListScreen = ({ navigation }) => {
 
   return (
     <ScrollView>
-      {devices.current.map((device) => (
-        <React.Fragment key={device.id}>
-          <List.Item
-            title={device.name ? device.name : "null"}
-            titleStyle={{
-              color: device.id === selectedDevice.id ? theme.colors.accent : theme.colors.text,
-            }}
-            description={device.id}
-            descriptionStyle={{
-              color: device.id === selectedDevice.id ? theme.colors.accent : theme.colors.text,
-            }}
-            left={(props) => (
-              <List.Icon
-                style={props.style}
-                color={device.id === selectedDevice.id ? theme.colors.accent : props.color}
-                icon="bluetooth"
-              />
-            )}
-            right={() => (
-              <Text
-                style={{
-                  color: device.id === selectedDevice.id ? theme.colors.accent : theme.colors.text,
-                  alignSelf: "center",
-                  fontSize: 16,
-                }}
-              >
-                {device.rssi}
-              </Text>
-            )}
-            style={
-              device.id === selectedDevice.id ? { backgroundColor: theme.colors.primary } : null
-            }
-            onPress={() => SelectDevice(device)}
-          />
-          <Divider />
-        </React.Fragment>
-      ))}
+      {devices.current.map((device) => {
+        return (
+          <React.Fragment key={device.id}>
+            <List.Item
+              title={device.name ? device.name : "null"}
+              description={device.id}
+              left={(props) => <List.Icon style={props.style} icon="bluetooth" />}
+              right={() => <Button onPress={() => connect(device)}>Connect</Button>}
+            />
+            <Divider />
+          </React.Fragment>
+        );
+      })}
     </ScrollView>
   );
 };

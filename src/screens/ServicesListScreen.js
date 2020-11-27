@@ -1,15 +1,16 @@
-import { BleManager } from "react-native-ble-plx";
 import BleManagerContext from "../core/BleManagerContext";
 import { List } from "react-native-paper";
 import React from "react";
-import { Text } from "react-native";
+import { ScrollView } from "react-native";
+import ServiceComponent from "../components/ServiceComponent";
 
 const ServicesListScreen = ({ route }) => {
   // BLE Manager for performing tasks
   const bleManager = React.useContext(BleManagerContext);
 
   // List of Services
-  const [services, setServices] = React.useState({});
+  const [services, setServices] = React.useState([]);
+  const [chars, setChars] = React.useState({});
 
   React.useEffect(() => {
     async function getServices() {
@@ -19,29 +20,35 @@ const ServicesListScreen = ({ route }) => {
         device = await device.discoverAllServicesAndCharacteristics();
         const receivedServices = await device.services();
 
-        const overallServices = {};
+        const charObj = {};
         for (let i = 0; i < receivedServices.length; ++i) {
-					const char = service.characteristics();
-					overallServices[service.uuid] = char.uuid;
-				}
-        setServices(overallServices);
+          const char = await receivedServices[i].characteristics();
+          charObj[receivedServices[i].uuid] = char;
+        }
+        setChars(charObj);
+        setServices(receivedServices);
       } else {
         console.log("No devices found!");
       }
     }
     getServices();
-    // serviceList = await devices.services();
-    // setServices(serviceList);
-    // console.log("Got services = ", serviceList);
   }, []);
 
-  return Object.keys(services).map((service) => (
-    <List.Accordion title={service}>
-      {services[service].map((char) => (
-        <List.Item title={char} />
-      ))}
-    </List.Accordion>
-  ));
+  return (
+    <ScrollView>
+      {services.map((service) => {
+        console.log(`All chars = `, chars);
+        console.log(`Particular = `, chars[service.uuid]);
+        return (
+          <ServiceComponent service={service} key={service.uuid}>
+            {chars[service.uuid].map((char) => (
+              <List.Item title={char.uuid} key={char.uuid} />
+            ))}
+          </ServiceComponent>
+        );
+      })}
+    </ScrollView>
+  );
 };
 
 export default ServicesListScreen;
